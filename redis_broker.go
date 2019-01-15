@@ -9,6 +9,10 @@ import (
 	"github.com/gomodule/redigo/redis"
 )
 
+const (
+	defaultQueueName = "celery"
+)
+
 // RedisCeleryBroker is CeleryBroker for Redis
 type RedisCeleryBroker struct {
 	*redis.Pool
@@ -40,8 +44,13 @@ func NewRedisPool(uri string) *redis.Pool {
 func NewRedisCeleryBroker(uri string) *RedisCeleryBroker {
 	return &RedisCeleryBroker{
 		Pool:      NewRedisPool(uri),
-		queueName: "celery",
+		queueName: defaultQueueName,
 	}
+}
+
+// SetQueue sets the queue name for the broker to receive and send celery messages
+func (cb *RedisCeleryBroker) SetQueue(queue string) {
+	cb.queueName = queue
 }
 
 // SendCeleryMessage sends CeleryMessage to redis queue
@@ -71,10 +80,6 @@ func (cb *RedisCeleryBroker) GetCeleryMessage() (*CeleryMessage, error) {
 		return nil, fmt.Errorf("null message received from redis")
 	}
 	messageList := messageJSON.([]interface{})
-	// check for celery message
-	if string(messageList[0].([]byte)) != "celery" {
-		return nil, fmt.Errorf("not a celery message: %v", messageList[0])
-	}
 	// parse
 	var message CeleryMessage
 	json.Unmarshal(messageList[1].([]byte), &message)
